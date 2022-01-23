@@ -1,0 +1,3 @@
+﻿  main.cpp
+E:\source\repos\manageHotel\temp\main.cpp(74,20): warning C4018: '<': signed/unsigned mismatch
+  temp.vcxproj -> E:\source\repos\manageHotel\Debug\temp.exe

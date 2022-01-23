@@ -1,0 +1,1321 @@
+﻿#include <iostream>
+using namespace std;
+#include <string>
+#include <fstream>
+#include <cstdlib>
+#include <vector>
+#include <iomanip>
+
+// Minh họa chương trình quản lý khách sạn
+
+// =============== KHAI BÁO CẤU TRÚC DANH SÁCH LIÊN KẾT ÐON ===============
+// Khai báo câu trúc dữ liệu date
+struct date
+{
+	int ngay;
+	int thang;
+	int nam;
+};
+// Khai báo cấu trúc dữ liệu bill
+struct bill
+{
+	int maHoaDon;
+	string tenKhach;
+	string soChungMinh;
+	int gioiTinh; // 0: Nữ, 1: Nam
+	string soPhong;
+	char loaiPhong;
+	int donGia;
+	date ngayDen;
+	date ngayDi;
+	int tienPhong;
+};
+typedef struct bill Bill;
+
+// Khai báo cấu trúc 1 node
+struct billNode
+{
+	Bill data; // Dữ liệu chứa trong 1 node - 1 hóa đơn
+	struct billNode *pNext; // con trỏ dùng để liên kết các node với nhau
+};
+typedef struct billNode BillNode;
+
+// Khai báo cấu trúc danh sách liên kết đơn
+struct listBill
+{
+	BillNode *pHead; // node quản lý đầu danh sách
+	BillNode *pTail; // node quản lý cuối danh sách
+};
+typedef struct listBill ListBill;
+
+// =============== KHỞI TẠO CẤU TRÚC DANH SÁCH LIÊN KẾT ÐƠN ===============
+void khoiTao(ListBill &list) {
+	list.pHead = NULL;
+	list.pTail = NULL;
+}
+
+// Hàm khởi tạo 1 node
+BillNode *khoiTaoBillNode(Bill b) {
+	BillNode *p = new BillNode; // cấp phát vùng nhớ cho node p
+	p->data = b;
+	p->pNext = NULL;
+	return p;
+}
+
+// =============== TIỆN ÍCH ==================
+// Hàm chuyển 1 string về chữ thường => để so sánh chuỗi không phân biệt hoa thường
+string toLower(string s) {
+	string str;
+	for (int i = 0; i < s.length(); i++)
+	{
+		char c = s.at(i);
+		str.push_back(tolower(c));
+	}
+	return str;
+}
+
+// Hàm so sánh 2 chuỗi không phân biệt hoa thường
+bool kiemTraChuoi(string s1, string s2) {
+	string s3 = toLower(s1);
+	string s4 = toLower(s2);
+	if (s3.compare(s4) == 0)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+// Hàm kiểm tra chuỗi s1 có chứa chuỗi s2 không ?
+bool checkStr(string s1, string s2) {
+	string s3 = toLower(s1);
+	string s4 = toLower(s2);
+	if (strstr(s3.c_str(), s4.c_str()) != NULL)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+// =============== 2. THÊM 1 HÓA ĐƠN VÀO DANH SÁCH ===============
+// Hàm kiểm tra mã có trùng hay không ?
+bool checkMa(int ma, ListBill list) {
+	for (BillNode *k = list.pHead; k != NULL; k = k->pNext) {
+		if (k->data.maHoaDon == ma)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+// Hàm nhập giá trị 1 hóa đơn
+BillNode *nhap(Bill b, ListBill list) {
+	do
+	{
+		cout << "Nhap ma hoa don: ";
+		cin >> b.maHoaDon;
+	} while (checkMa(b.maHoaDon, list) || b.maHoaDon <= 0);
+	cin.ignore();
+	cout << "Nhap ten khach: ";
+	getline(cin, b.tenKhach);
+	cout << "Nhap so chung minh: ";
+	getline(cin, b.soChungMinh);
+	do
+	{
+		cout << "Nhap gioi tinh (0:Nu/ 1:Nam): ";
+		cin >> b.gioiTinh;
+	} while (b.gioiTinh != 0 && b.gioiTinh != 1);
+	cin.ignore();
+	do
+	{
+		cout << "Nhap so phong: (bat dau bang A B C)";
+		getline(cin, b.soPhong);
+	} while (b.soPhong.at(0) != 'A' && b.soPhong.at(0) != 'B' && b.soPhong.at(0) != 'C');
+
+	cout << "Nhap ngay den: ";
+	cout << "Ngay: ";
+	cin >> b.ngayDen.ngay;
+	cout << "Thang: ";
+	cin >> b.ngayDen.thang;
+	cout << "Nam: ";
+	cin >> b.ngayDen.nam;
+	cout << "Nhap ngay di: ";
+	cout << "Ngay: ";
+	cin >> b.ngayDi.ngay;
+	cout << "Thang: ";
+	cin >> b.ngayDi.thang;
+	cout << "Nam: ";
+	cin >> b.ngayDi.nam;
+	b.loaiPhong = b.soPhong.at(0);
+	switch (b.loaiPhong)
+	{
+	case 'A': b.donGia = 400;
+		break;
+	case 'B': b.donGia = 300;
+		break;
+	case 'C': b.donGia = 250;
+		break;
+	default:
+		break;
+	}
+	b.tienPhong = b.donGia * (b.ngayDi.ngay - b.ngayDen.ngay);
+	BillNode *p = khoiTaoBillNode(b);
+	return p;
+}
+
+// Hàm thêm 1 hóa đơn vào đầu danh sách
+void InsertFirst(ListBill &list, BillNode *p) {
+	// danh sách đang rỗng
+	if (list.pHead == NULL)
+	{
+		list.pHead = list.pTail = p; // node đầu cũng là node cuối và là p
+	}
+	else
+	{
+		p->pNext = list.pHead;
+		list.pHead = p;
+	}
+}
+
+// Hàm thêm 1 sách vào cuối danh sách
+void InsertLast(ListBill &list, BillNode *p) {
+	// danh sách đang rỗng
+	if (list.pHead == NULL)
+	{
+		list.pHead = list.pTail = p; // node đầu cũng là node cuối và là p
+	}
+	else
+	{
+		list.pTail->pNext = p;
+		list.pTail = p;
+	}
+}
+
+// Hàm thêm 1 hóa đơn vào sau 1 hóa đơn nào đó
+void InsertAfter(ListBill &list, BillNode *p) {
+	int ma;
+	cout << "\nBan muon them vao sau hoa don nao? Nhap ma hoa don: ";
+	cin >> ma;
+	if (list.pHead == NULL)
+	{
+		list.pHead = list.pTail = p;
+		return;
+	}
+	if (list.pHead->data.maHoaDon == ma && list.pHead->pNext == NULL)
+	{
+		InsertLast(list, p);
+	}
+	else
+	{
+		for (BillNode *k = list.pHead; k != NULL; k = k->pNext)
+		{
+			if (k->data.maHoaDon == ma)
+			{
+				BillNode *g = k->pNext; // cho node g trỏ đến node nằm sau node q
+				p->pNext = g;
+				k->pNext = p;
+			}
+		}
+	}
+}
+
+// =============== 1. KHỞI TẠO DANH SÁCH ===============
+// Khởi tạo danh mục hóa đơn rỗng (chưa có hóa đơn)
+// Ðọc từ file: nhập vào tên file đã lưu danh mục hóa đơn ? (lần làm việc trước đó)
+void docMotHoaDon(ifstream &filein, Bill &b) {
+	string ma = to_string(b.maHoaDon);
+	getline(filein, ma, ';');
+	b.maHoaDon = atoi(ma.c_str());
+	getline(filein, b.tenKhach, ';');
+	getline(filein, b.soChungMinh, ';');
+	string sex = to_string(b.gioiTinh);
+	getline(filein, sex, ';');
+	b.gioiTinh = atoi(sex.c_str());
+	getline(filein, b.soPhong, ';');
+	string type = to_string(b.loaiPhong);
+	getline(filein, type, ';');
+	b.loaiPhong = atoi(type.c_str());
+	string price = to_string(b.donGia);
+	getline(filein, price, ';');
+	b.donGia = atoi(price.c_str());
+	// Ngày đến
+	string ngay = to_string(b.ngayDen.ngay);
+	getline(filein, ngay, '/');
+	b.ngayDen.ngay = atoi(ngay.c_str());
+	string thang = to_string(b.ngayDen.thang);
+	getline(filein, thang, '/');
+	b.ngayDen.thang = atoi(thang.c_str());
+	string nam = to_string(b.ngayDen.nam);
+	getline(filein, nam, ';');
+	b.ngayDen.nam = atoi(nam.c_str());
+	// Ngày đi
+	string ngay = to_string(b.ngayDi.ngay);
+	getline(filein, ngay, '/');
+	b.ngayDi.ngay = atoi(ngay.c_str());
+	string thang = to_string(b.ngayDi.thang);
+	getline(filein, thang, '/');
+	b.ngayDi.thang = atoi(thang.c_str());
+	string nam = to_string(b.ngayDi.nam);
+	getline(filein, nam, ';');
+	b.ngayDi.nam = atoi(nam.c_str());
+	filein >> b.tienPhong;
+}
+
+void docFile(ifstream &filein, ListBill &list) {
+	while (!filein.eof())
+	{
+		Bill b;
+		docMotHoaDon(filein, b);
+		if (b.maHoaDon == 0)
+		{
+			break;
+		}
+		BillNode *p = khoiTaoBillNode(b);
+		InsertLast(list, p);
+	}
+}
+
+// Hàm kiểm tra file có tồn tại hay không ?
+bool checkFile(string path) {
+	ifstream isf(path);
+	return isf.good();
+}
+
+// =============== 3. XOÁ 1 HÓA ĐƠN KHỎI DANH SÁCH ===============
+// Xoá hóa đơn ở đầu danh sách
+void deleteFirst(ListBill &list) {
+	if (list.pHead == NULL)
+	{
+		cout << "Danh sach rong!" << endl;
+		return;
+	}
+	BillNode *p = list.pHead; // node p là node sẽ xoá
+	list.pHead = list.pHead->pNext; // cập nhật lại pHead là phần tử kế tiếp (thứ 2)
+	delete p;
+	cout << "Xoa thanh cong!" << endl;
+}
+
+// Xoá hóa đơn ở cuối danh sách
+void deleteLast(ListBill &list) {
+	if (list.pHead == NULL)
+	{
+		cout << "Danh sach rong!" << endl;
+		return;
+	}
+	// trường hợp danh sách có 1 phần tử
+	if (list.pHead->pNext == NULL)
+	{
+		deleteFirst(list);
+		return;
+	}
+	for (BillNode *k = list.pHead; k != NULL; k = k->pNext)
+	{
+		// nếu node k là phần tử kề cuối - thực hiện xoá
+		if (k->pNext == list.pTail)
+		{
+			delete list.pTail; // xoá đi phần tử cuối danh sách
+			k->pNext = NULL; // cho con trỏ của node kề cuối trỏ đến null
+			list.pTail = k; // cập nhật lại pTail
+			cout << "Xoa thanh cong!" << endl;
+			return;
+		}
+	}
+}
+
+// Xoá hóa đơn ở sau hóa đơn có mã số nào đó
+void deleteAfter(ListBill &list) {
+	if (list.pHead == NULL)
+	{
+		cout << "Danh sach rong!" << endl;
+		return;
+	}
+	if (list.pHead->pNext == NULL)
+	{
+		cout << "Danh sach chi co 1 phan tu!" << endl;
+		return;
+	}
+	int ma;
+	cout << "Ban muon xoa hoa don o sau hoa don nao? Nhap ma hoa don: ";
+	cin >> ma;
+	for (BillNode *k = list.pHead; k != NULL; k = k->pNext)
+	{
+		if (k->data.maHoaDon == ma)
+		{
+			BillNode *g = k->pNext; // node g là node nằm sau node k - xoá node g
+			k->pNext = g->pNext; // cập nhật liên kết giữa node k với node sau node g
+			delete g;
+			cout << "Xoa thanh cong!" << endl;
+			return;
+		}
+	}
+}
+
+// Xoá hóa đơn theo mã số hóa đơn
+void deleteMa(ListBill &list) {
+	if (list.pHead == NULL)
+	{
+		cout << "Danh sach rong!" << endl;
+		return;
+	}
+	int ma;
+	cout << "Nhap ma hoa don can xoa: ";
+	cin >> ma;
+	// trường hợp mã hóa đơn nhập vào nằm đầu danh sách
+	if (list.pHead->data.maHoaDon == ma)
+	{
+		deleteFirst(list);
+		return;
+	}
+	// trường hợp mã hóa đơn nhập vào nằm cuối danh sách
+	if (list.pTail->data.maHoaDon == ma)
+	{
+		deleteLast(list);
+		return;
+	}
+	BillNode *g = new BillNode; // node g là node trỏ đến node nằm trước node cần xoá
+	for (BillNode *k = list.pHead; k != NULL; k = k->pNext)
+	{
+		if (k->data.maHoaDon == ma)
+		{
+			g->pNext = k->pNext; // cập nhật liên kết giữa node g với node sau node k
+			delete k;
+			cout << "Xoa thanh cong!" << endl;
+			return;
+		}
+		g = k; // cho node g trỏ đến node k
+	}
+	cout << "Ma ban nhap khong co trong danh sach!" << endl;
+}
+
+// Xoá hóa đơn theo tên khách
+void deleteTenKhach(ListBill &list) {
+	if (list.pHead == NULL)
+	{
+		cout << "Danh sach rong!" << endl;
+		return;
+	}
+	cin.ignore();
+	string tenKhach;
+	cout << "Nhap ten sach can xoa: ";
+	getline(cin, tenKhach);
+	// trường hợp tên khách nhập vào nằm đầu danh sách
+	if (kiemTraChuoi(list.pHead->data.tenKhach,tenKhach))
+	{
+		deleteFirst(list);
+	}
+	// trường hợp tên khách nhập vào nằm cuối danh sách
+	if (kiemTraChuoi(list.pTail->data.tenKhach, tenKhach))
+	{
+		deleteLast(list);
+	}
+	int test = 0;
+	BillNode *g = new BillNode; // node g là node trỏ đến node nằm trước node cần xoá
+	for (BillNode *k = list.pHead; k != NULL; k = k->pNext)
+	{
+		if (kiemTraChuoi(k->data.tenKhach, tenKhach))
+		{
+			test++;
+			g->pNext = k->pNext; // cập nhật liên kết giữa node g với node sau node k
+			delete k;
+			k = g; // cập nhật lại k
+		}
+		g = k; // cho node g trỏ đến node k
+	}
+	if (test == 0) {
+		cout << "Ten sach ban nhap khong co trong danh sach!" << endl;
+	}
+	else
+	{
+		cout << "Xoa thanh cong sach: " << tenKhach << "!" << endl;
+	}
+}
+
+// Xoá hóa đơn theo chứng minh nhân dân
+void deleteTenTacGia(ListBill &list) {
+	if (list.pHead == NULL)
+	{
+		cout << "Danh sach rong!" << endl;
+		return;
+	}
+	cin.ignore();
+	string tenTacGia;
+	cout << "Nhap ten tac gia can xoa: ";
+	getline(cin, tenTacGia);
+	// tru?ng h?p tên sách nh?p vào n?m d?u danh sách
+	if (kiemTraChuoi(list.pHead->data.tacGia, tenTacGia))
+	{
+		deleteFirst(list);
+	}
+	// tru?ng h?p tên sách nh?p vào n?m cu?i danh sách
+	if (kiemTraChuoi(list.pTail->data.tacGia, tenTacGia))
+	{
+		deleteLast(list);
+	}
+	int test = 0;
+	BookNode *g = new BookNode; // node g là node tr? d?n node n?m tru?c node c?n xoá
+	for (BookNode *k = list.pHead; k != NULL; k = k->pNext)
+	{
+		if (kiemTraChuoi(k->data.tacGia, tenTacGia))
+		{
+			test++;
+			g->pNext = k->pNext; // c?p nh?t liên k?t gi? node g v?i node sau node k
+			delete k;
+			k = g; // c?p nh?t l?i k
+		}
+		g = k; // cho node g tr? d?n node k
+	}
+	if (test == 0) {
+		cout << "Ten tac gia ban nhap khong co trong danh sach!" << endl;
+	}
+	else {
+		cout << "Xoa thanh cong sach cua tac gia: " << tenTacGia << "!" << endl;
+	}
+}
+
+// ================= CHUC NANG HIEN THI DANH SACH =================
+// Hàm hi?n th? 1 cu?n sách
+void showBook(Book b) {
+	if (b.trangThai == 0)
+	{
+		cout << setw(10) << b.maSach << setw(55) << b.tenSach << setw(35) << b.tacGia << setw(30) << b.nhaXuatBan << setw(10) << b.namXuatBan << setw(15) << "Chua muon" << endl;
+	}
+	else
+	{
+		cout << setw(10) << b.maSach << setw(55) << b.tenSach << setw(35) << b.tacGia << setw(30) << b.nhaXuatBan << setw(10) << b.namXuatBan << setw(15) << "Da muon" << endl;
+	}
+}
+
+// Hàm hi?n th? danh sách
+void show(ListBook list) {
+	if (list.pHead != NULL)
+	{
+		cout << setw(10) << "Ma sach" << setw(55) << "Ten sach" << setw(35) << "Tac gia" << setw(30) << "Nha xuat ban" << setw(10) << "NXB" << setw(15) << "Trang thai" << endl;
+		for (BookNode *k = list.pHead; k != NULL; k = k->pNext)
+		{
+			showBook(k->data);
+		}
+	}
+	else
+	{
+		cout << "Chua co du lieu" << endl;
+	}
+}
+
+// =============== S?P X?P DANH SÁCH ===================
+// Hàm hoán v? 2 ph?n t? trong danh sách liên k?t
+void swap(Book &b1, Book &b2) {
+	Book b3;
+	b3.maSach = b1.maSach;
+	b3.tenSach = b1.tenSach;
+	b3.tacGia = b1.tacGia;
+	b3.nhaXuatBan = b1.nhaXuatBan;
+	b3.namXuatBan = b1.namXuatBan;
+	b3.trangThai = b1.trangThai;
+	b1.maSach = b2.maSach;
+	b1.tenSach = b2.tenSach;
+	b1.tacGia = b2.tacGia;
+	b1.nhaXuatBan = b2.nhaXuatBan;
+	b1.namXuatBan = b2.namXuatBan;
+	b1.trangThai = b2.trangThai;
+	b2.maSach = b3.maSach;
+	b2.tenSach = b3.tenSach;
+	b2.tacGia = b3.tacGia;
+	b2.nhaXuatBan = b3.nhaXuatBan;
+	b2.namXuatBan = b3.namXuatBan;
+	b2.trangThai = b3.trangThai;
+}
+
+// Hàm s?p x?p theo alphabet
+void sortAlphaBet(ListBook list, int n) {
+	for (BookNode *k = list.pHead; k != list.pTail; k = k->pNext) {
+		for (BookNode *j = k->pNext; j != NULL; j = j->pNext) {
+			string s1, s2;
+			if (n == 1)
+			{
+				s1 = toLower(k->data.tenSach);
+				s2 = toLower(j->data.tenSach);
+			}
+			else if (n == 2)
+			{
+				s1 = toLower(k->data.tacGia);
+				s2 = toLower(j->data.tacGia);
+			}
+			else
+			{
+				s1 = toLower(k->data.nhaXuatBan);
+				s2 = toLower(j->data.nhaXuatBan);
+			}
+			if (s1.compare(s2) > 0)
+			{
+				swap(k->data, j->data);
+			}
+		}
+	}
+}
+
+// Hàm s?p x?p theo nam (gi?m d?n)
+void sortNamXuatBan(ListBook list) {
+	for (BookNode *k = list.pHead; k != list.pTail; k = k->pNext) {
+		for (BookNode *j = k->pNext; j != NULL; j = j->pNext) {
+			if (k->data.namXuatBan < j->data.namXuatBan)
+			{
+				swap(k->data, j->data);
+			}
+		}
+	}
+}
+
+// =============== 5. CH?C NANG XEM DANH SÁCH ===============
+// Hàm hi?n th? danh sách nh?ng cu?n sách dang cho mu?n
+void showDangMuon(ListBook list) {
+	if (list.pHead != NULL)
+	{
+		cout << "========== DANH SACH BOOK DANG CHO MUON ==========" << endl;
+		cout << setw(10) << "Ma sach" << setw(55) << "Ten sach" << setw(35) << "Tac gia" << setw(30) << "Nha xuat ban" << setw(10) << "NXB" << setw(15) << "Trang thai" << endl;
+		int dem = 1;
+		for (BookNode *k = list.pHead; k != NULL; k = k->pNext)
+		{
+			if (k->data.trangThai == 1)
+			{
+				dem++;
+				showBook(k->data);
+			}
+		}
+		if (dem == 1)
+		{
+			cout << "Khong co cuon sach nao dang cho muon" << endl;
+		}
+	}
+	else
+	{
+		cout << "Chua co du lieu" << endl;
+	}
+}
+
+// Hàm hi?n th? danh sách nh?ng cu?n sách chua cho mu?n
+void showChuaMuon(ListBook list) {
+	if (list.pHead != NULL)
+	{
+		cout << "========== DANH SACH BOOK CHUA CHO MUON ==========" << endl;
+		cout << setw(10) << "Ma sach" << setw(55) << "Ten sach" << setw(35) << "Tac gia" << setw(30) << "Nha xuat ban" << setw(10) << "NXB" << setw(15) << "Trang thai" << endl;
+		int dem = 1;
+		for (BookNode *k = list.pHead; k != NULL; k = k->pNext)
+		{
+			if (k->data.trangThai == 0)
+			{
+				dem++;
+				showBook(k->data);
+			}
+		}
+		if (dem == 1)
+		{
+			cout << "Khong co cuon sach nao chua cho muon" << endl;
+		}
+	}
+	else
+	{
+		cout << "Chua co du lieu" << endl;
+	}
+}
+
+// Hàm hi?n th? danh sách theo alphabet c?a tên sách
+void showAlphaBet(ListBook list, int n) {
+	if (list.pHead != NULL)
+	{
+		if (n == 1)
+		{
+			sortAlphaBet(list, n);
+			cout << "========== DANH SACH BOOK THEO ALPHABET TEN SACH ==========" << endl;
+			show(list);
+		}
+		else if (n == 2)
+		{
+			sortAlphaBet(list, n);
+			cout << "========== DANH SACH BOOK THEO ALPHABET TEN TAC GIA ==========" << endl;
+			show(list);
+		}
+		else
+		{
+			sortAlphaBet(list, n);
+			cout << "========== DANH SACH BOOK THEO ALPHABET NHA XUAT BAN ==========" << endl;
+			show(list);
+		}
+	}
+	else
+	{
+		cout << "Chua co du lieu" << endl;
+	}
+}
+
+// Hàm hi?n th? danh sách sách du?c xu?t b?n m?i nh?t (theo nam)
+void showNamXuatBan(ListBook list) {
+	if (list.pHead != NULL)
+	{
+		sortNamXuatBan(list);
+		cout << "========== DANH SACH BOOK DUOC XUAT BAN MOI NHAT ==========" << endl;
+		show(list);
+	}
+	else
+	{
+		cout << "Chua co du lieu" << endl;
+	}
+}
+
+// =============== 4. TÌM KI?M SÁCH ===============
+// Hàm tìm ki?m sách theo tên sách
+void searchTenSach(ListBook list) {
+	if (list.pHead == NULL)
+	{
+		cout << "Danh sach rong!" << endl;
+		return;
+	}
+	cin.ignore();
+	string tenSach;
+	cout << "Nhap ten sach can tim: ";
+	getline(cin, tenSach);
+	int dem = 1;
+	for (BookNode *k = list.pHead; k != NULL; k = k->pNext)
+	{
+		if (checkStr(k->data.tenSach, tenSach))
+		{
+			if (dem == 1)
+			{
+				cout << "========== KET QUA TIM KIEM ==========" << endl;
+				cout << setw(10) << "Ma sach" << setw(55) << "Ten sach" << setw(35) << "Tac gia" << setw(30) << "Nha xuat ban" << setw(10) << "NXB" << setw(15) << "Trang thai" << endl;
+			}
+			dem++;
+			showBook(k->data);
+		}
+	}
+	if (dem == 1)
+	{
+		cout << "Khong tim thay " << tenSach << endl;
+	}
+}
+
+// Hàm tìm ki?m sách theo tên tác gi?
+void searchTenTacGia(ListBook list) {
+	if (list.pHead == NULL)
+	{
+		cout << "Danh sach rong!" << endl;
+		return;
+	}
+	cin.ignore();
+	string tacGia;
+	cout << "Nhap ten sach can tim: ";
+	getline(cin, tacGia);
+	int dem = 1;
+	for (BookNode *k = list.pHead; k != NULL; k = k->pNext)
+	{
+		if (checkStr(k->data.tacGia, tacGia))
+		{
+			if (dem == 1)
+			{
+				cout << "========== KET QUA TIM KIEM ==========" << endl;
+				cout << setw(10) << "Ma sach" << setw(55) << "Ten sach" << setw(35) << "Tac gia" << setw(30) << "Nha xuat ban" << setw(10) << "NXB" << setw(15) << "Trang thai" << endl;
+			}
+			dem++;
+			showBook(k->data);
+		}
+	}
+	if (dem == 1)
+	{
+		cout << "Khong tim thay " << tacGia << endl;
+	}
+}
+
+// Hàm tìm ki?m sách theo nhà xu?t b?n
+void searchNhaXuatBan(ListBook list) {
+	if (list.pHead == NULL)
+	{
+		cout << "Danh sach rong!" << endl;
+		return;
+	}
+	cin.ignore();
+	string nhaXuatBan;
+	cout << "Nhap ten sach can tim: ";
+	getline(cin, nhaXuatBan);
+	int dem = 1;
+	for (BookNode *k = list.pHead; k != NULL; k = k->pNext)
+	{
+		if (checkStr(k->data.nhaXuatBan, nhaXuatBan))
+		{
+			if (dem == 1)
+			{
+				cout << "========== KET QUA TIM KIEM ==========" << endl;
+				cout << setw(10) << "Ma sach" << setw(55) << "Ten sach" << setw(35) << "Tac gia" << setw(30) << "Nha xuat ban" << setw(10) << "NXB" << setw(15) << "Trang thai" << endl;
+			}
+			dem++;
+			showBook(k->data);
+		}
+	}
+	if (dem == 1)
+	{
+		cout << "Khong tim thay " << nhaXuatBan << endl;
+	}
+}
+
+// =============== 6. CH?C NANG MU?N/TR? SÁCH ===============
+void muonSach(ListBook &list) {
+	if (list.pHead == NULL)
+	{
+		cout << "Danh sach rong!" << endl;
+		return;
+	}
+	int dem = 1;
+	vector<Book> sach;
+	for (BookNode *k = list.pHead; k != NULL; k = k->pNext)
+	{
+		if (k->data.trangThai == 0)
+		{
+			sach.push_back(k->data);
+			cout << dem++ << " - " << k->data.maSach << " - " << k->data.tenSach << " - " << k->data.tacGia << endl;
+		}
+	}
+	int muon;
+	if (dem == 1)
+	{
+		cout << "Sach trong thu vien da muon het, vui long quay lai sau!" << endl;
+		return;
+	}
+	else
+	{
+		cout << "Nhap ma sach ban can muon: ";
+		cin >> muon;
+		int dem2 = 0;
+		for (int i = 0; i < sach.size(); i++)
+		{
+			if (muon == sach[i].maSach)
+			{
+				dem2++;
+			}
+		}
+		if (dem2 == 0)
+		{
+			cout << "Ma ban nhap khong trung voi nhung cuon sach o tren!" << endl;
+			return;
+		}
+	}
+	for (BookNode *k = list.pHead; k != NULL; k = k->pNext)
+	{
+		if (k->data.maSach == muon)
+		{
+			k->data.trangThai = 1;
+			cout << "Muon sach thanh cong!" << endl;
+			return;
+		}
+	}
+}
+
+void traSach(ListBook &list) {
+	int tra;
+	cout << "Nhap ma sach ban can tra: ";
+	cin >> tra;
+	for (BookNode *k = list.pHead; k != NULL; k = k->pNext)
+	{
+		if (k->data.maSach == tra && k->data.trangThai == 1)
+		{
+			k->data.trangThai = 0;
+			cout << "Tra sach thanh cong!" << endl;
+			return;
+		}
+		if (k->data.maSach == tra && k->data.trangThai == 0)
+		{
+			cout << "Sach nay chua cho muon, vui long kiem tra lai!" << endl;
+			return;
+		}
+	}
+	cout << "Ma ban nhap khong ton tai, vui long kiem tra lai!" << endl;
+}
+
+// =============== 7. CH?NH S?A N?I DUNG SÁCH ===============
+void editSach(ListBook &list, int n) {
+	int ma;
+	cout << "Nhap ma sach can sua: ";
+	cin >> ma;
+	string str;
+	for (BookNode *k = list.pHead; k != NULL; k = k->pNext)
+	{
+		if (k->data.maSach == ma)
+		{
+			cin.ignore();
+			cout << "Nhap thong tin moi: ";
+			getline(cin, str);
+			if (n == 1)
+			{
+				k->data.tenSach = str;
+			}
+			else if (n == 2)
+			{
+				k->data.tacGia = str;
+			}
+			else if (n == 3)
+			{
+				k->data.nhaXuatBan = str;
+			}
+			else
+			{
+				k->data.namXuatBan = atoi(str.c_str());
+			}
+			cout << "Sua thanh cong!" << endl;
+			return;
+		}
+	}
+	cout << "Ma ban nhap khong co trong danh sach!" << endl;
+}
+
+// =============== 8. LUU VÀO FILE ===============
+void ghiMotSach(ofstream &fileout, Book b) {
+	fileout << b.maSach << ";" << b.tenSach << ";" << b.tacGia << ";" << b.nhaXuatBan << ";" << b.namXuatBan << ";" << b.trangThai << endl;
+}
+
+void ghiFile(ofstream &fileout, ListBook list) {
+	for (BookNode *k = list.pHead; k != NULL; k = k->pNext)
+	{
+		ghiMotSach(fileout, k->data);
+	}
+}
+
+// Hàm gi?i phóng vùng nh? cho danh sách liên k?t don
+void giaiPhongVungNho(ListBook &list) {
+	BookNode *k = NULL;
+	while (list.pHead != NULL)
+	{
+		k = list.pHead;
+		list.pHead = list.pHead->pNext;
+		delete k;
+	}
+}
+
+// Menu
+void menu(ListBook &list) {
+	int luaChon;
+	while (true)
+	{
+		system("cls");
+		cout << "\n ============ CHUONG TRINH QUAN LY SACH ============";
+		cout << "\n--0. Exit";
+		cout << "\n--1. Khoi tao danh sach";
+		cout << "\n--2. Them 1 cuon sach vao danh sach";
+		cout << "\n--3. Xoa 1 cuon sach khoi danh sach";
+		cout << "\n--4. Tim kiem sach";
+		cout << "\n--5. Hien thi danh sach";
+		cout << "\n--6. Muon/Tra sach";
+		cout << "\n--7. Chinh sua noi dung sach";
+		cout << "\n--8. Luu file";
+		cout << "\n ===================== THE END =====================" << endl;
+
+		cout << "Nhap lua chon: ";
+		cin >> luaChon;
+		if (luaChon == 0)
+		{
+			cout << "Goodbye" << endl;
+			system("pause");
+			break;
+		}
+		else if (luaChon == 1)
+		{
+			int luaChon1;
+			while (true) {
+				system("cls");
+				cout << "\n ============ KHOI TAO DANH SACH ============";
+				cout << "\n--0. Exit";
+				cout << "\n--1. Khoi tao danh muc rong";
+				cout << "\n--2. Doc tu file lam viec truoc do";
+				cout << "\n ================= THE END ==================" << endl;
+
+				cout << "Nhap lua chon: ";
+				cin >> luaChon1;
+				if (luaChon1 == 0) {
+					break;
+				}
+				else if (luaChon1 == 1)
+				{
+					khoiTao(list);
+					cout << "Khoi tao thanh cong!" << endl;
+					system("pause");
+				}
+				else if (luaChon1 == 2)
+				{
+					khoiTao(list);
+					cin.ignore();
+					string tenFile;
+					cout << "Nhap ten file: ";
+					getline(cin, tenFile);
+					if (checkFile(tenFile))
+					{
+						ifstream filein;
+						filein.open(tenFile, ios_base::in);
+						docFile(filein, list);
+						filein.close();
+						cout << "Doc file thanh cong!" << endl;
+					}
+					else
+					{
+						cout << "File ban nhap khong ton tai, vui long kiem tra lai!" << endl;
+					}
+					system("pause");
+				}
+				else
+				{
+					cout << "Lua chon cua ban khong hop le, vui long nhap lua chon tu 0 - 2!" << endl;
+					system("pause");
+				}
+			}
+		}
+		else if (luaChon == 2)
+		{
+			int luaChon2;
+			while (true)
+			{
+				system("cls");
+				cout << "\n ============ THEM 1 CUON SACH VAO DANH SACH ============";
+				cout << "\n--0. Exit";
+				cout << "\n--1. Them vao dau danh sach";
+				cout << "\n--2. Them vao sau 1 cuon sach nao do";
+				cout << "\n--3. Them vao cuoi danh sach";
+				cout << "\n ======================= THE END ========================" << endl;
+
+				cout << "Nhap lua chon: ";
+				cin >> luaChon2;
+				if (luaChon2 == 0)
+				{
+					break;
+				}
+				else if (luaChon2 == 1)
+				{
+					cout << "========= Nhap thong tin sach =========" << endl;
+					Book b;
+					BookNode *p = nhap(b, list);
+					InsertFirst(list, p);
+				}
+				else if (luaChon2 == 2)
+				{
+					cout << "========= Nhap thong tin sach =========" << endl;
+					Book b;
+					BookNode *p = nhap(b, list);
+					InsertAfter(list, p);
+				}
+				else if (luaChon2 == 3)
+				{
+					cout << "========= Nhap thong tin sach =========" << endl;
+					Book b;
+					BookNode *p = nhap(b, list);
+					InsertLast(list, p);
+				}
+				else
+				{
+					cout << "Lua chon cua ban khong hop le, vui long nhap lua chon tu 0 - 3!" << endl;
+					system("pause");
+				}
+			}
+		}
+		else if (luaChon == 3)
+		{
+			int luachon3;
+			while (true)
+			{
+				system("cls");
+				cout << "\n ============ XOA 1 CUON SACH KHOI DANH SACH ============";
+				cout << "\n--0. Exit";
+				cout << "\n--1. Xoa theo ma so";
+				cout << "\n--2. Xoa theo ten sach";
+				cout << "\n--3. Xoa theo ten tac gia";
+				cout << "\n--4. Xoa sach o dau danh sach";
+				cout << "\n--5. Xoa sach o sau 1 cuon sach co ma so nao do";
+				cout << "\n--6. Xoa sach o cuoi danh sach";
+				cout << "\n ======================= THE END ========================" << endl;
+
+				cout << "Nhap lua chon: ";
+				cin >> luachon3;
+				if (luachon3 == 0)
+				{
+					break;
+				}
+				else if (luachon3 == 1)
+				{
+					deleteMa(list);
+					system("pause");
+				}
+				else if (luachon3 == 2)
+				{
+					deleteTenSach(list);
+					system("pause");
+				}
+				else if (luachon3 == 3)
+				{
+					deleteTenTacGia(list);
+					system("pause");
+				}
+				else if (luachon3 == 4)
+				{
+					deleteFirst(list);
+					system("pause");
+				}
+				else if (luachon3 == 5)
+				{
+					deleteAfter(list);
+					system("pause");
+				}
+				else if (luachon3 == 6)
+				{
+					deleteLast(list);
+					system("pause");
+				}
+				else
+				{
+					cout << "Lua chon cua ban khong hop le, vui long nhap lua chon tu 0 - 6!" << endl;
+					system("pause");
+				}
+			}
+		}
+		else if (luaChon == 4)
+		{
+			int luaChon4;
+			while (true)
+			{
+				system("cls");
+				cout << "\n ============ TIM KIEM SACH ============";
+				cout << "\n--0. Exit";
+				cout << "\n--1. Tim kiem theo ten sach";
+				cout << "\n--2. Tim kiem theo ten tac gia";
+				cout << "\n--3. Tim kiem theo nha xuat ban";
+				cout << "\n =============== THE END ===============" << endl;
+
+				cout << "Nhap lua chon: ";
+				cin >> luaChon4;
+				if (luaChon4 == 0)
+				{
+					break;
+				}
+				else if (luaChon4 == 1)
+				{
+					searchTenSach(list);
+					system("pause");
+				}
+				else if (luaChon4 == 2)
+				{
+					searchTenTacGia(list);
+					system("pause");
+				}
+				else if (luaChon4 == 3)
+				{
+					searchNhaXuatBan(list);
+					system("pause");
+				}
+				else
+				{
+					cout << "Lua chon cua ban khong hop le, vui long nhap lua chon tu 0 - 3!" << endl;
+					system("pause");
+				}
+			}
+		}
+		else if (luaChon == 5)
+		{
+			int luaChon5;
+			while (true)
+			{
+				system("cls");
+				cout << "\n ============ HIEN THI DANH SACH ============";
+				cout << "\n--0. Exit";
+				cout << "\n--1. Hien thi toan bo danh muc sach trong danh sach";
+				cout << "\n--2. Hien thi nhung cuon sach dang cho muon";
+				cout << "\n--3. Hien thi nhung cuon sach chua cho muon";
+				cout << "\n--4. Hien thi sach theo thu tu";
+				cout << "\n ================= THE END ==================" << endl;
+
+				cout << "Nhap lua chon: ";
+				cin >> luaChon5;
+				if (luaChon5 == 0)
+				{
+					break;
+				}
+				else if (luaChon5 == 1)
+				{
+					cout << "============ DANH SACH BOOK ============" << endl;
+					show(list);
+					system("pause");
+				}
+				else if (luaChon5 == 2)
+				{
+					showDangMuon(list);
+					system("pause");
+				}
+				else if (luaChon5 == 3)
+				{
+					showChuaMuon(list);
+					system("pause");
+				}
+				else if (luaChon5 == 4)
+				{
+					int luaChon54;
+					while (true)
+					{
+						system("cls");
+						cout << "\n ============ HIEN THI DANH SACH THEO THU TU ============";
+						cout << "\n--0. Exit";
+						cout << "\n--1. Hien thi sach theo alphabet cua ten sach";
+						cout << "\n--2. Hien thi sach theo alphabet cua ten tac gia";
+						cout << "\n--3. Hien thi sach theo alphabet cua nha xuat ban";
+						cout << "\n--4. Hien thi sach duoc xuat ban moi nhat (theo nam)";
+						cout << "\n ======================= THE END ========================" << endl;
+
+						cout << "Nhap lua chon: ";
+						cin >> luaChon54;
+						if (luaChon54 == 0)
+						{
+							break;
+						}
+						else if (luaChon54 == 1)
+						{
+							
+							showAlphaBet(list, 1);
+							system("pause");
+						}
+						else if (luaChon54 == 2)
+						{
+							showAlphaBet(list, 2);
+							system("pause");
+						}
+						else if (luaChon54 == 3)
+						{
+							showAlphaBet(list, 3);
+							system("pause");
+						}
+						else if (luaChon54 == 4)
+						{
+							showNamXuatBan(list);
+							system("pause");
+						}
+						else
+						{
+							cout << "Lua chon cua ban khong hop le, vui long nhap lua chon tu 0 - 4!" << endl;
+							system("pause");
+						}
+					}
+				}
+				else
+				{
+					cout << "Lua chon cua ban khong hop le, vui long nhap lua chon tu 0 - 4!" << endl;
+					system("pause");
+				}
+			}
+		}
+		else if (luaChon == 6)
+		{
+			int luaChon6;
+			while (true)
+			{
+				system("cls");
+				cout << "\n ============ MUON/TRA SACH ============";
+				cout << "\n--0. Exit";
+				cout << "\n--1. Muon sach";
+				cout << "\n--2. Tra sach";
+				cout << "\n =============== THE END ===============" << endl;
+
+				cout << "Nhap lua chon: ";
+				cin >> luaChon6;
+				if (luaChon6 == 0)
+				{
+					break;
+				}
+				else if (luaChon6 == 1)
+				{
+					muonSach(list);
+					system("pause");
+				}
+				else if (luaChon6 == 2)
+				{
+					traSach(list);
+					system("pause");
+				}
+				else
+				{
+					cout << "Lua chon cua ban khong hop le, vui long nhap lua chon tu 0 - 2!" << endl;
+					system("pause");
+				}
+			}
+		}
+		else if (luaChon == 7)
+		{
+			int luaChon7;
+			while (true)
+			{
+				system("cls");
+				cout << "\n ============ CHINH SUA NOI DUNG SACH ============";
+				cout << "\n--0. Exit";
+				cout << "\n--1. Sua ten sach";
+				cout << "\n--2. Sua ten tac gia";
+				cout << "\n--3. Sua nha xuat ban";
+				cout << "\n--4. Sua nam xuat ban";
+				cout << "\n =================== THE END =====================" << endl;
+
+				cout << "Nhap lua chon: ";
+				cin >> luaChon7;
+				if (luaChon7 == 0)
+				{
+					break;
+				}
+				else if (luaChon7 == 1)
+				{
+					editSach(list, 1);
+					system("pause");
+				}
+				else if (luaChon7 == 2)
+				{
+					editSach(list, 2);
+					system("pause");
+				}
+				else if (luaChon7 == 3)
+				{
+					editSach(list, 3);
+					system("pause");
+				}
+				else if (luaChon7 == 4)
+				{
+					editSach(list, 4);
+					system("pause");
+				}
+				else
+				{
+					cout << "Lua chon cua ban khong hop le, vui long nhap lua chon tu 0 - 3!" << endl;
+					system("pause");
+				}
+			}
+		}
+		else if (luaChon == 8)
+		{
+			cin.ignore();
+			string tenFile;
+			cout << "Nhap ten file: ";
+			getline(cin, tenFile);			
+			ofstream fileout;
+			fileout.open(tenFile, ios_base::out);
+			ghiFile(fileout, list);
+			fileout.close();
+			cout << "Luu thanh cong vao file " << tenFile << endl;
+			system("pause");
+		}
+		else
+		{
+			cout << "Lua chon cua ban khong hop le, vui long nhap lua chon tu 0 - 8!" << endl;
+			system("pause");
+		}
+	}
+}
+
+int main() {
+	ListBook list;
+	khoiTao(list); // kh?i t?o danh sách
+	menu(list);
+	giaiPhongVungNho(list);
+
+	system("pause");
+	return 0;
+}

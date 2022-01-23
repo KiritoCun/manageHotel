@@ -1,0 +1,7 @@
+﻿  bill.cpp
+  customer.cpp
+  date.cpp
+  room.cpp
+  Source.cpp
+bill.obj : error LNK2001: unresolved external symbol "public: __thiscall room::room(void)" (??0room@@QAE@XZ)
+C:\Users\TechCare\source\repos\manageHotel\Release\manageHotel.exe : fatal error LNK1120: 1 unresolved externals
